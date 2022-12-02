@@ -29,6 +29,7 @@
 #include <string.h>
 #include <time.h>
 #include <chrono>
+#include "shm_timer.hpp"
 
 namespace livox_ros {
 
@@ -668,6 +669,9 @@ void Lds::StorageRawPacket(uint8_t handle, LivoxEthPacket* eth_packet) {
 
   memcpy(cur_timestamp.stamp_bytes, eth_packet->timestamp,
          sizeof(cur_timestamp));
+  if (eth_packet->timestamp_type ==kTimestampTypePps){
+    shm_timer::recv_lidar_packet(cur_timestamp.stamp); // shm_timer记录time_base
+  } 
   timestamp = RawLdsStampToNs(cur_timestamp, eth_packet->timestamp_type);
   if (timestamp >= kRosTimeMax) {
     printf("Raw EthPacket time out of range Lidar[%d]\n", handle);
@@ -680,10 +684,11 @@ void Lds::StorageRawPacket(uint8_t handle, LivoxEthPacket* eth_packet) {
       /** Whether a new sync frame */
       if ((cur_timestamp.stamp < packet_statistic->last_timestamp) &&
           (cur_timestamp.stamp < kPacketTimeGap)) {
-        auto cur_time = std::chrono::high_resolution_clock::now();
-        int64_t sync_time = cur_time.time_since_epoch().count();
-        /** used receive time as timebase */
-        packet_statistic->timebase = sync_time;
+        // auto cur_time = std::chrono::high_resolution_clock::now();
+        // int64_t sync_time = cur_time.time_since_epoch().count();
+        // /** used receive time as timebase */
+        // packet_statistic->timebase = sync_time;
+        packet_statistic->timebase = shm_timer::lidar_time_mem_data->base_time;
       }
     }
     packet_statistic->last_timestamp = cur_timestamp.stamp;
@@ -712,10 +717,11 @@ void Lds::StorageRawPacket(uint8_t handle, LivoxEthPacket* eth_packet) {
       /** Whether a new sync frame */
       if ((cur_timestamp.stamp < packet_statistic->last_imu_timestamp) &&
           (cur_timestamp.stamp < kPacketTimeGap)) {
-        auto cur_time = std::chrono::high_resolution_clock::now();
-        int64_t sync_time = cur_time.time_since_epoch().count();
-        /** used receive time as timebase */
-        packet_statistic->imu_timebase = sync_time;
+        // auto cur_time = std::chrono::high_resolution_clock::now();
+        // int64_t sync_time = cur_time.time_since_epoch().count();
+        // /** used receive time as timebase */
+        // packet_statistic->imu_timebase = sync_time;
+        packet_statistic->imu_timebase = shm_timer::lidar_time_mem_data->base_time;
       }
     }
     packet_statistic->last_imu_timestamp = cur_timestamp.stamp;

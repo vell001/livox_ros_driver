@@ -199,6 +199,7 @@ target_link_libraries(${PROJECT_NAME}_node
 	${catkin_LIBRARIES}
 	${PCL_LIBRARIES}
 	${APR_LIBRARIES}
+	rt
 	)
 
 

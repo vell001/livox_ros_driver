@@ -4,5 +4,6 @@ CMakeLists.txt
 livox_ros_driver/Livox-SDK
 #whitelist
 
-
-
+.idea
+livox_ros_driver/.idea
+livox_ros_driver/cmake-build*

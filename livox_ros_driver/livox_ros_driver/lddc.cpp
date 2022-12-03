@@ -408,6 +408,11 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
     QueuePrePop(queue, &storage_packet);
     LivoxEthPacket *raw_packet =
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
+    if (IsPpsTrigger(&storage_packet, data_source)){
+        // pps触发时放到下一个包里pub，这个包不pub
+        printf("pps trigger\n");
+        break;
+    }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
     int64_t packet_gap = timestamp - last_timestamp;
     if ((packet_gap > lidar->packet_interval_max) &&

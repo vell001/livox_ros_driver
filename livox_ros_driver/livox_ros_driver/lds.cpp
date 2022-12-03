@@ -97,6 +97,22 @@ uint64_t RawLdsStampToNs(LdsStamp &timestamp, uint8_t timestamp_type) {
   }
 }
 
+int64_t IsPpsTriggerLastPacketTime = 0;
+bool IsPpsTrigger(StoragePacket *packet, uint8_t data_src) {
+  LivoxEthPacket *raw_packet =
+          reinterpret_cast<LivoxEthPacket *>(packet->raw_data);
+  LdsStamp *timestamp = reinterpret_cast<LdsStamp *>(raw_packet->timestamp);
+  if (raw_packet->timestamp_type == kTimestampTypePps) {
+    if(IsPpsTriggerLastPacketTime > timestamp->stamp
+    && 1000000000 > timestamp->stamp){
+      // pps触发
+      return true;
+    }
+  }
+  IsPpsTriggerLastPacketTime = timestamp->stamp;
+  return false;
+}
+
 uint64_t GetStoragePacketTimestamp(StoragePacket *packet, uint8_t data_src) {
   LivoxEthPacket *raw_packet =
       reinterpret_cast<LivoxEthPacket *>(packet->raw_data);
@@ -671,7 +687,7 @@ void Lds::StorageRawPacket(uint8_t handle, LivoxEthPacket* eth_packet) {
          sizeof(cur_timestamp));
   if (eth_packet->timestamp_type ==kTimestampTypePps){
     shm_timer::recv_lidar_packet(cur_timestamp.stamp); // shm_timer记录time_base
-  } 
+  }
   timestamp = RawLdsStampToNs(cur_timestamp, eth_packet->timestamp_type);
   if (timestamp >= kRosTimeMax) {
     printf("Raw EthPacket time out of range Lidar[%d]\n", handle);

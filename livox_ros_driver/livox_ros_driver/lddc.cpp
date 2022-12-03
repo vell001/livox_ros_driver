@@ -200,7 +200,7 @@ uint32_t Lddc::PublishPointcloud2(LidarDataQueue *queue, uint32_t packet_num,
       break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
-    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_)) {
+    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_ * 1000000)) {
       // 当时间差大于pub的间隔时间，则停止组包，代替使用固定packet数量方式
       break;
     }
@@ -317,7 +317,7 @@ uint32_t Lddc::PublishPointcloudData(LidarDataQueue *queue, uint32_t packet_num,
       break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
-    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_)) {
+    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_ * 1000000)) {
       // 当时间差大于pub的间隔时间，则停止组包，代替使用固定packet数量方式
       break;
     }
@@ -443,7 +443,7 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
         break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
-    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_)) {
+    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_ * 1000000)) {
         // 当时间差大于pub的间隔时间，则停止组包，代替使用固定packet数量方式
         break;
     }

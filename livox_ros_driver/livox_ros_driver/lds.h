@@ -449,8 +449,8 @@ class Lds {
   LidarDevice lidars_[kMaxSourceLidar]; /**< The index is the handle */
   Semaphore semaphore_;
 
- protected:
   uint32_t buffer_time_ms_; /**< Buffer time before data in queue is read */
+protected:
   uint8_t data_src_;
 
  private:

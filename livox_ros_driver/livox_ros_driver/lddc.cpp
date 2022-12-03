@@ -188,7 +188,8 @@ uint32_t Lddc::PublishPointcloud2(LidarDataQueue *queue, uint32_t packet_num,
   uint32_t line_num = GetLaserLineNumber(lidar->info.type);
   uint32_t echo_num = GetEchoNumPerPoint(lidar->raw_data_type);
   uint32_t is_zero_packet = 0;
-  while ((published_packet < packet_num) && !QueueIsEmpty(queue)) {
+  int64_t start_timestamp = -1;
+  while (!QueueIsEmpty(queue)) {
     QueuePrePop(queue, &storage_packet);
     LivoxEthPacket *raw_packet =
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
@@ -199,6 +200,10 @@ uint32_t Lddc::PublishPointcloud2(LidarDataQueue *queue, uint32_t packet_num,
       break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
+    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_)) {
+      // 当时间差大于pub的间隔时间，则停止组包，代替使用固定packet数量方式
+      break;
+    }
     int64_t packet_gap = timestamp - last_timestamp;
     if ((packet_gap > lidar->packet_interval_max) &&
         lidar->data_is_pubulished) {
@@ -212,6 +217,7 @@ uint32_t Lddc::PublishPointcloud2(LidarDataQueue *queue, uint32_t packet_num,
     }
     /** Use the first packet timestamp as pointcloud2 msg timestamp */
     if (!published_packet) {
+        start_timestamp = timestamp;
       cloud.header.stamp = ros::Time(timestamp / 1000000000.0);
     }
     uint32_t single_point_num = storage_packet.point_num * echo_num;
@@ -299,7 +305,8 @@ uint32_t Lddc::PublishPointcloudData(LidarDataQueue *queue, uint32_t packet_num,
   uint8_t data_source = lidar->data_src;
   uint32_t line_num = GetLaserLineNumber(lidar->info.type);
   uint32_t echo_num = GetEchoNumPerPoint(lidar->raw_data_type);
-  while ((published_packet < packet_num) && !QueueIsEmpty(queue)) {
+  int64_t start_timestamp = -1;
+  while (!QueueIsEmpty(queue)) {
     QueuePrePop(queue, &storage_packet);
     LivoxEthPacket *raw_packet =
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
@@ -310,6 +317,10 @@ uint32_t Lddc::PublishPointcloudData(LidarDataQueue *queue, uint32_t packet_num,
       break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
+    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_)) {
+      // 当时间差大于pub的间隔时间，则停止组包，代替使用固定packet数量方式
+      break;
+    }
     int64_t packet_gap = timestamp - last_timestamp;
     if ((packet_gap > lidar->packet_interval_max) &&
         lidar->data_is_pubulished) {
@@ -321,6 +332,7 @@ uint32_t Lddc::PublishPointcloudData(LidarDataQueue *queue, uint32_t packet_num,
       }
     }
     if (!published_packet) {
+      start_timestamp = timestamp;
       cloud->header.stamp = timestamp / 1000.0;  // to pcl ros time stamp
     }
     uint32_t single_point_num = storage_packet.point_num * echo_num;
@@ -419,7 +431,8 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
   uint32_t published_packet = 0;
   uint32_t packet_offset_time = 0;  /** uint:ns */
   uint32_t is_zero_packet = 0;
-  while (published_packet < packet_num) {
+  int64_t start_timestamp = -1;
+  while (!QueueIsEmpty(queue)) {
     QueuePrePop(queue, &storage_packet);
     LivoxEthPacket *raw_packet =
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
@@ -430,6 +443,10 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
         break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
+    if (start_timestamp >= 0 && (timestamp - start_timestamp > lds_->buffer_time_ms_)) {
+        // 当时间差大于pub的间隔时间，则停止组包，代替使用固定packet数量方式
+        break;
+    }
     int64_t packet_gap = timestamp - last_timestamp;
     if ((packet_gap > lidar->packet_interval_max) &&
         lidar->data_is_pubulished) {
@@ -443,6 +460,7 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
     }
     /** first packet */
     if (!published_packet) {
+      start_timestamp = timestamp;
       printf("timebase: %ld\n", timestamp);
       livox_msg.timebase = timestamp;
       packet_offset_time = 0;

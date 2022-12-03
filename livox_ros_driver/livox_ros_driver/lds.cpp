@@ -104,7 +104,8 @@ bool IsPpsTrigger(StoragePacket *packet, uint8_t data_src) {
   LdsStamp *timestamp = reinterpret_cast<LdsStamp *>(raw_packet->timestamp);
   if (raw_packet->timestamp_type == kTimestampTypePps) {
     if(IsPpsTriggerLastPacketTime > timestamp->stamp
-    && 1000000000 > timestamp->stamp){
+    && 1000000000 > timestamp->stamp){  
+    IsPpsTriggerLastPacketTime = timestamp->stamp;
       // pps触发
       return true;
     }

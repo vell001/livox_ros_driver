@@ -94,39 +94,42 @@ int32_t Lddc::GetPublishStartTime(LidarDevice *lidar, LidarDataQueue *queue,
   QueuePrePop(queue, storage_packet);
   uint64_t timestamp =
       GetStoragePacketTimestamp(storage_packet, lidar->data_src);
-  uint32_t remaining_time = timestamp % publish_period_ns_;
-  uint32_t diff_time = publish_period_ns_ - remaining_time;
-  /** Get start time, down to the period boundary */
-  if (diff_time > (publish_period_ns_ / 4)) {
-    // ROS_INFO("0 : %u", diff_time);
-    *start_time = timestamp - remaining_time;
-    return 0;
-  } else if (diff_time <= lidar->packet_interval_max) {
-    *start_time = timestamp;
-    return 0;
-  } else {
-    /** Skip some packets up to the period boundary*/
-    // ROS_INFO("2 : %u", diff_time);
-    do {
-      if (QueueIsEmpty(queue)) {
-        break;
-      }
-      QueuePopUpdate(queue); /* skip packet */
-      QueuePrePop(queue, storage_packet);
-      uint32_t last_remaning_time = remaining_time;
-      timestamp = GetStoragePacketTimestamp(storage_packet, lidar->data_src);
-      remaining_time = timestamp % publish_period_ns_;
-      /** Flip to another period */
-      if (last_remaning_time > remaining_time) {
-        // ROS_INFO("Flip to another period, exit");
-        break;
-      }
-      diff_time = publish_period_ns_ - remaining_time;
-    } while (diff_time > lidar->packet_interval);
+  *start_time = timestamp;
+  return 0;
 
-    /* the remaning packets in queue maybe not enough after skip */
-    return -1;
-  }
+  // uint32_t remaining_time = timestamp % publish_period_ns_;
+  // uint32_t diff_time = publish_period_ns_ - remaining_time;
+  // /** Get start time, down to the period boundary */
+  // if (diff_time > (publish_period_ns_ / 4)) {
+  //   // ROS_INFO("0 : %u", diff_time);
+  //   *start_time = timestamp - remaining_time;
+  //   return 0;
+  // } else if (diff_time <= lidar->packet_interval_max) {
+  //   *start_time = timestamp;
+  //   return 0;
+  // } else {
+  //   /** Skip some packets up to the period boundary*/
+  //   // ROS_INFO("2 : %u", diff_time);
+  //   do {
+  //     if (QueueIsEmpty(queue)) {
+  //       break;
+  //     }
+  //     QueuePopUpdate(queue); /* skip packet */
+  //     QueuePrePop(queue, storage_packet);
+  //     uint32_t last_remaning_time = remaining_time;
+  //     timestamp = GetStoragePacketTimestamp(storage_packet, lidar->data_src);
+  //     remaining_time = timestamp % publish_period_ns_;
+  //     /** Flip to another period */
+  //     if (last_remaning_time > remaining_time) {
+  //       // ROS_INFO("Flip to another period, exit");
+  //       break;
+  //     }
+  //     diff_time = publish_period_ns_ - remaining_time;
+  //   } while (diff_time > lidar->packet_interval);
+
+  //   /* the remaning packets in queue maybe not enough after skip */
+  //   return -1;
+  // }
 }
 
 void Lddc::InitPointcloud2MsgHeader(sensor_msgs::PointCloud2& cloud) {
@@ -189,6 +192,12 @@ uint32_t Lddc::PublishPointcloud2(LidarDataQueue *queue, uint32_t packet_num,
     QueuePrePop(queue, &storage_packet);
     LivoxEthPacket *raw_packet =
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
+    if (IsPpsTrigger(&storage_packet, data_source)){
+      // pps触发时放到下一个包里pub，这个包不pub
+      timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
+      printf("pps trigger %ld\n",timestamp);
+      break;
+    }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
     int64_t packet_gap = timestamp - last_timestamp;
     if ((packet_gap > lidar->packet_interval_max) &&
@@ -294,6 +303,12 @@ uint32_t Lddc::PublishPointcloudData(LidarDataQueue *queue, uint32_t packet_num,
     QueuePrePop(queue, &storage_packet);
     LivoxEthPacket *raw_packet =
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
+    if (IsPpsTrigger(&storage_packet, data_source)){
+      // pps触发时放到下一个包里pub，这个包不pub
+      timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
+      printf("pps trigger %ld\n",timestamp);
+      break;
+    }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
     int64_t packet_gap = timestamp - last_timestamp;
     if ((packet_gap > lidar->packet_interval_max) &&
@@ -410,7 +425,8 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
         reinterpret_cast<LivoxEthPacket *>(storage_packet.raw_data);
     if (IsPpsTrigger(&storage_packet, data_source)){
         // pps触发时放到下一个包里pub，这个包不pub
-        printf("pps trigger\n");
+        timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
+        printf("pps trigger %ld\n",timestamp);
         break;
     }
     timestamp = GetStoragePacketTimestamp(&storage_packet, data_source);
@@ -427,6 +443,7 @@ uint32_t Lddc::PublishCustomPointcloud(LidarDataQueue *queue,
     }
     /** first packet */
     if (!published_packet) {
+      printf("timebase: %ld\n", timestamp);
       livox_msg.timebase = timestamp;
       packet_offset_time = 0;
       /** convert to ros time stamp */
